@@ -73,22 +73,26 @@ class Crawl():
         content = response.content.decode('utf-8')
 
         matches = re.findall('<h2 itemprop="name"><a itemprop="url" href="(.*)">(.*)<\/a><\/h2>', content)
+        self.artists[name]["following"] = []
         for match in matches:
             if (match is not None) & (len(match[1]) > 0):
                 if ("?" in match[0]) | ("?" in match[1]):
                     continue
 
                 href = str(match[0])
-                name = str(match[1])
+                name_following = str(match[1])
 
-                if name not in self.artists:
-                    self.artists[name] = {}
-                    self.artists[name]["href"] = href
-                    self.artists[name]["id"] = self.id
+                if name_following not in self.artists: 
+                    self.artists[name_following] = {}
+                    self.artists[name_following]["href"] = href
+                    self.artists[name_following]["id"] = self.id
                     self.id += 1
                     #print("href: %s\t| name: %s" % (match[0], match[1]))
 
                     new_artists.append(name)
+
+                if name_following not in self.artists[name]["following"]:
+                    self.artists[name]["following"].append(name_following)
 
         #print("New Artists: %s" % new_artists)
         return new_artists
@@ -110,9 +114,6 @@ def main(depth=10):
         #print("Gathering top artists...")
         soundCrawler.crawl_top_artists(url_top)
 
-        # Check 
-        #soundCrawler.print_artists()
-
         # Start crawling
         artist_list = list(soundCrawler.artists)
         for i in range(depth):
@@ -129,9 +130,12 @@ def main(depth=10):
             except:
                 artist_list = []
 
+        # Check 
+        soundCrawler.print_artists()
+
         # Dump data for use later
         soundCrawler.dump_artists()
 
 if __name__ == '__main__':
-    main()
+    main(depth=10)
 
