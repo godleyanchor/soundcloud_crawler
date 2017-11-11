@@ -1,52 +1,160 @@
 #!/usr/bin/env python3
 
 import re
-import certifi
-import urllib3 as urllib
-import html5lib
-from urllib.request import urlopen
+import urllib
+#from crawler import Crawler, CrawlerCache
+import requests
+import pickle
+from geopy.geocoders import Nominatim
 
+#print(content)
 
-http = urllib.PoolManager(
-        cert_reqs='CERT_REQUIRED',
-        ca_certs=certifi.where())
+class Crawl():
+    def __init__(self, url):
+        self.url = url
+        self.header = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.62 Safari/537.36'}
 
-url = 'https://soundcloud.com'
-url_top = str(url)+'/charts/top'
+        self.artists = {}
+        self.id = 0
 
-headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
+    def load_artists(self):
+        self.artists = pickle.load(open("artists.p", "rb"))
+        self.id = len(self.artists)
+        #print(self.id)
 
-# Open the html document and parse the data
-with urlopen(url_top) as conn:
-    element = html5lib.parse(conn.read())
-    walker = html5lib.getTreeWalker("etree")
-    stream = walker(element)
-    s = html5lib.serializer.HTMLSerializer()
-    output = s.serialize(stream)
+    def dump_artists(self):
+        pickle.dump(self.artists, open("artists.p", "wb"))
 
-    # Parse to the particular section
-    data = -1
-    for item in output:
-        #if item.find('<a href="\/([a-zA-Z]+)" class="sc-link-light">[a-zA-Z\s\</a>]+\n') > 0:
-        if item.find('a') > 0:
-            print(item)
+    def crawl_top_artists(self, url):
+        response = requests.get(url, headers=self.header)
+        content = response.content.decode('utf-8')
 
-        if len(item) < 0:
-            continue
-        #match = re.search('<a href="(.*)" class="sc.link.light">(.*)<\/a>', item)
-        match = re.search('<a href="(.*)"', item)
-        #print("item: %s\t| match: %s" % (item, match))
-        if match is not None:
-            href = match.group(1)
-            name = match.group(2)
-            print("Name: %s\t| href: %s" % (name, href))
+        matches = re.findall('<a href="([^ ]*)">(.*)<\/a>', content)
+        for match in matches:
+            if (match is not None) & (len(match[1]) > 0):
+                if ("?" in match[0]) | ("?" in match[1]):
+                    continue
 
-    # Parse further to separate into different tracks
-    if data != -1:
-        data = data.split('<h2>Tracks</h2>')[1]
-        data = data.split('<li>')[1:]
-        for item in data:
-            print(item)
-            print('----------------')
-        print(len(data))
-#textfile.close()
+                href = str(match[0])
+                name = str(match[1])
+
+                if name not in self.artists:
+                    self.artists[name] = {}
+                    self.artists[name]["href"] = href
+                    self.artists[name]["id"] = self.id
+                    self.id += 1
+                    #print("href: %s\t| name: %s" % (match[0], match[1]))
+
+    def crawl_artist(self, name, depth=10):
+        url = self.artists[name]["href"]
+        url_artist = self.url + url
+        url_following = url_artist + "/following"
+
+        # Main page info: num_followers, num_tracks
+        response = requests.get(url_artist, headers=self.header)
+        content = response.content.decode('utf-8')
+        #print(content)
+
+        matches = re.findall('([^ ]+) Tracks\. ([^ ]+) Followers\.|"city":"([^"]+)', content)
+        new_artists = []
+        for match in matches:
+            if match is not None:
+                if ("?" in match[0]) | ("?" in match[1]):
+                    continue
+                if len(match[0]) > 0 and len(match[1]) > 0:
+                    num_tracks = match[0]
+                    num_followers = match[1]
+                if len(match[2]) > 0 and match[2] != 'Boulder' :
+                    artist_city = match[2]
+                    geolocator = Nominatim()
+                    location = geolocator.geocode(artist_city)
+                    if not location is None:
+                        latitude = location.latitude
+                        longitude = location.longitude
+
+                else:
+                    artist_city = ''
+                    latitude = ''
+                    longitude = ''
+
+                self.artists[name]["num_tracks"] = num_tracks
+                self.artists[name]["num_followers"] = num_followers
+                self.artists[name]["city"] = artist_city
+                self.artists[name]["latitude"] = latitude
+                self.artists[name]["longitude"] = longitude
+                self.id += 1
+
+                #print("tracks: %s\t| followers: %s" % (num_tracks, num_followers))
+
+        # Following page info:
+        response = requests.get(url_following, headers=self.header)
+        content = response.content.decode('utf-8')
+
+        matches = re.findall('<h2 itemprop="name"><a itemprop="url" href="(.*)">(.*)<\/a><\/h2>', content)
+        self.artists[name]["following"] = []
+        for match in matches:
+            if (match is not None) & (len(match[1]) > 0):
+                if ("?" in match[0]) | ("?" in match[1]):
+                    continue
+
+                href = str(match[0])
+                name_following = str(match[1])
+
+                if name_following not in self.artists:
+                    self.artists[name_following] = {}
+                    self.artists[name_following]["href"] = href
+                    self.artists[name_following]["id"] = self.id
+                    self.id += 1
+                    #print("href: %s\t| name: %s" % (match[0], match[1]))
+
+                    new_artists.append(name)
+
+                if name_following not in self.artists[name]["following"]:
+                    self.artists[name]["following"].append(name_following)
+
+        #print("New Artists: %s" % new_artists)
+        return new_artists
+
+    def print_artists(self):
+        for name in self.artists:
+            print(self.artists[name])
+
+def main(depth=10):
+        soundCrawler = Crawl("https://soundcloud.com")
+
+        # Load old data
+        soundCrawler.load_artists()
+
+        id = 0
+        url_top = str(soundCrawler.url)+"/charts/top"
+
+        # Initialize artists
+        #print("Gathering top artists...")
+        # soundCrawler.crawl_top_artists(url_top)
+        #
+        # # Start crawling
+        # artist_list = list(soundCrawler.artists)
+        # for i in range(depth):
+        #     print("Depth: %s" % i)
+        #     print("->Artists: %s" % artist_list)
+        #
+        #     new_artist_list = []
+        #     for name in artist_list:
+        #         new_artists = soundCrawler.crawl_artist(name)
+        #         for new_artist in new_artists:
+        #             if not new_artist in new_artist_list:
+        #                 new_artist_list.append(new_artist)
+        #
+        #     try:
+        #         artist_list = new_artist_list
+        #     except:
+        #         artist_list = []
+
+        # Check
+        soundCrawler.print_artists()
+
+        # Dump data for use later
+        soundCrawler.dump_artists()
+
+if __name__ == '__main__':
+    main(depth=2)

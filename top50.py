@@ -7,11 +7,11 @@ import requests
 import pickle
 #print(content)
 
-class Crawl(): 
+class Crawl():
     def __init__(self, url):
         self.url = url
         self.header = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.62 Safari/537.36'}
-            
+
         self.artists = {}
         self.id = 0
 
@@ -42,7 +42,7 @@ class Crawl():
                     self.artists[name]["id"] = self.id
                     self.id += 1
                     #print("href: %s\t| name: %s" % (match[0], match[1]))
-        
+
     def crawl_artist(self, name, depth=10):
         url = self.artists[name]["href"]
         url_artist = self.url + url
@@ -51,9 +51,11 @@ class Crawl():
         # Main page info: num_followers, num_tracks
         response = requests.get(url_artist, headers=self.header)
         content = response.content.decode('utf-8')
+        print(content)
 
-        matches = re.findall('([^ ]+) Tracks\. ([^ ]+) Followers', content)
+        matches = re.findall('(([^ ]+) Tracks\. ([^ ]+) Followers\.)|("city":"([^"]+))', content)
         new_artists = []
+        print(len(matches))
         for match in matches:
             if match is not None:
                 if ("?" in match[0]) | ("?" in match[1]):
@@ -82,7 +84,7 @@ class Crawl():
                 href = str(match[0])
                 name_following = str(match[1])
 
-                if name_following not in self.artists: 
+                if name_following not in self.artists:
                     self.artists[name_following] = {}
                     self.artists[name_following]["href"] = href
                     self.artists[name_following]["id"] = self.id
@@ -130,7 +132,7 @@ def main(depth=10):
             except:
                 artist_list = []
 
-        # Check 
+        # Check
         soundCrawler.print_artists()
 
         # Dump data for use later
@@ -138,4 +140,3 @@ def main(depth=10):
 
 if __name__ == '__main__':
     main(depth=10)
-
