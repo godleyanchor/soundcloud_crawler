@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-
 import re
 import urllib
-#from crawler import Crawler, CrawlerCache
 import requests
 import pickle
 import time
+from geopy.geocoders import Nominatim
 from selenium import webdriver
 
 class Crawl():
@@ -16,13 +15,13 @@ class Crawl():
         self.artists = {}
         self.id = 0
 
-    def load_artists(self):
-        self.artists = pickle.load(open("artists.p", "rb"))
+    def load_artists(self, fname="artists.p"):
+        self.artists = pickle.load(open(fname, "rb"))
         self.id = len(self.artists)
         #print(self.id)
 
-    def dump_artists(self):
-        pickle.dump(self.artists, open("artists.p", "wb"))
+    def dump_artists(self, fname="artists.p"):
+        pickle.dump(self.artists, open(fname, "wb"))
 
     def crawl_top_artists(self, url):
         response = requests.get(url, headers=self.header)
@@ -49,45 +48,51 @@ class Crawl():
         # Following page info:
         #response = requests.get(url, headers=self.header)
         ######
-        driver = webdriver.Chrome('/mnt/c/chromedriver_win32/chromedriver.exe')
+        #driver = webdriver.Chrome('/mnt/c/chromedriver_win32/chromedriver.exe')
+        driver = webdriver.Chrome('C:/Users/jbuxofplenty/Desktop/chromedriver_win32/chromedriver.exe')
         driver.get(url)
         #driver.find_element_by_link_text("All").click()
-        for i in range(1, 10000):
+        for i in range(1, 10):
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
             time.sleep(0.1)
         html_source = driver.page_source
-        #content = response.content.decode('utf-8')
-        #content = html_source.decode('utf-8')
         content = html_source
+        driver.close()
+        #print(content)
 
         new_artists = []
-        matches = re.findall('<h2 itemprop="name"><a itemprop="url" href="(.*)">(.*)<\/a><\/h2>', content)
+        matches = re.findall('<div class="userBadgeListItem__title">[\s\n]+<a href="([^"]+)[^\n]+>[\r\n\s]+([^<]*)\n', content)
         self.artists[name][key] = []
         for match in matches:
-            if (match is not None) & (len(match[1]) > 0):
-                if ("?" in match[0]) | ("?" in match[1]):
+            #print("href: %s\t name: %s" % (match[0], match[1]))
+            if (match is not None) & (len(match) > 1):
+                if ("." in match) | ("," in match):
                     continue
 
-                href = str(match[0])
-                name_following = str(match[1])
+                href = match[0]
+                name_follower = match[1]
 
-                if name_following not in self.artists:
-                    self.artists[name_following] = {}
-                    self.artists[name_following]["href"] = href
-                    self.artists[name_following]["id"] = self.id
+                # Add artist to total set of artists
+                if name_follower not in self.artists:
+                    self.artists[name_follower] = {}
+                    self.artists[name_follower]["href"] = href
+                    self.artists[name_follower]["id"] = self.id
                     self.id += 1
-                    #print("href: %s\t| name: %s" % (match[0], match[1]))
+                    # print("href: %s\t name: %s" % (match[0], match[1]))
 
-                    new_artists.append(name)
+                    new_artists.append(name_follower)
 
-                # Add artist if not already scrubbed
-                if name_following not in self.artists[name][key]:
-                    self.artists[name][key].append(name_following)
+                # Add artist to followers of parent artist if not already scrubbed
+                if name_follower not in self.artists[name][key]:
+                    self.artists[name][key].append(name_follower)
 
-        #print("New Artists: %s" % new_artists)
+        print("New Artists: %s" % new_artists)
         return new_artists
 
-    def crawl_artist(self, name, depth=10):
+    def crawl_artist(self, name, depth=1):
+        print(name)
+        if type(name) is list:
+            return []
         url = self.artists[name]["href"]
         url_artist = self.url + url
         url_following = url_artist + "/following"
@@ -96,12 +101,12 @@ class Crawl():
         # Main page info: num_followers, num_tracks
         response = requests.get(url_artist, headers=self.header)
         content = response.content.decode('utf-8')
-        print(content)
+        #print(content)
 
-        matches = re.findall('(([^ ]+) Tracks\. ([^ ]+) Followers\.)|("city":"([^"]+))', content)
-        print("Found %s matches" % len(matches))
+        matches = re.findall('([^ ]+) Tracks\. ([^ ]+) Followers\.', content)
+        #print("Found %s matches" % len(matches))
         for match in matches:
-            if match is not None:
+            if (match is not None) & (len(match) > 1):
                 if ("?" in match[0]) | ("?" in match[1]):
                     continue
 
@@ -113,7 +118,32 @@ class Crawl():
                 self.id += 1
 
                 #print("tracks: %s\t| followers: %s" % (num_tracks, num_followers))
+        # Parse in the location
+        matches = re.findall('"city":"([^"]+)', content)
+        for match in matches:
+            if (match is not None):
+                if len(match) > 0 and match != 'Boulder' :
+                    artist_city = match
+                    geolocator = Nominatim()
+                    try:
+                        location = geolocator.geocode(artist_city)
+                    except:
+                        location = None
+                    if not location is None:
+                        latitude = location.latitude
+                        longitude = location.longitude
+                    else:
+                        latitude = ''
+                        longitude = ''
+                else:
+                    artist_city = ''
+                    latitude = ''
+                    longitude = ''
+                self.artists[name]["city"] = artist_city
+                self.artists[name]["latitude"] = latitude
+                self.artists[name]["longitude"] = longitude
 
+        print("name: %s\t num_tracks: %s\t num_followers: %s\t artist_city: %s" % (name, self.artists[name]["num_tracks"], self.artists[name]["num_followers"], self.artists[name]["city"]))
         new_artists = []
         #new_artists = self.scrub_follow(url=url_following, name=name, key="following")
         new_artists.append(self.scrub_follow(url_followers, name=name, key="followers"))
@@ -157,7 +187,7 @@ def main(depth=1):
         soundCrawler.print_artists()
 
         # Dump data for use later
-        soundCrawler.dump_artists()
+        soundCrawler.dump_artists("artist_small.p")
 
 if __name__ == '__main__':
     main(depth=1)
