@@ -52,9 +52,9 @@ class Crawl():
         driver = webdriver.Chrome('C:/Users/jbuxofplenty/Desktop/chromedriver_win32/chromedriver.exe')
         driver.get(url)
         #driver.find_element_by_link_text("All").click()
-        for i in range(1, 10):
+        for i in range(1, 200):
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            time.sleep(0.1)
+            time.sleep(0.01)
         html_source = driver.page_source
         content = html_source
         driver.close()
@@ -89,7 +89,7 @@ class Crawl():
         print("New Artists: %s" % new_artists)
         return new_artists
 
-    def crawl_artist(self, name, depth=1):
+    def crawl_artist(self, name, depth=3):
         print(name)
         if type(name) is list:
             return []
@@ -143,9 +143,15 @@ class Crawl():
                 self.artists[name]["latitude"] = latitude
                 self.artists[name]["longitude"] = longitude
 
+        self.artists[name]["num_tracks"] = self.try_key(name, "num_tracks")
+        self.artists[name]["num_followers"] = self.try_key(name, "num_followers")
+        self.artists[name]["city"] = self.try_key(name, "city")
+        self.artists[name]["latitude"] = self.try_key(name, "latitude")
+        self.artists[name]["longitude"] = self.try_key(name, "longitude")
+
         print("name: %s\t num_tracks: %s\t num_followers: %s\t artist_city: %s" % (name, self.artists[name]["num_tracks"], self.artists[name]["num_followers"], self.artists[name]["city"]))
         new_artists = []
-        #new_artists = self.scrub_follow(url=url_following, name=name, key="following")
+        new_artists = self.scrub_follow(url=url_following, name=name, key="following")
         new_artists.append(self.scrub_follow(url_followers, name=name, key="followers"))
 
         return new_artists
@@ -154,7 +160,15 @@ class Crawl():
         for name in self.artists:
             print(self.artists[name])
 
-def main(depth=1):
+    def try_key(self, artist, key):
+        try:
+            var = self.artists[artist][key]
+            return var
+        except:
+            self.artists[artist][key] = ''
+            return ''
+
+def main(depth=3):
         soundCrawler = Crawl("https://soundcloud.com")
 
         # Load old data
@@ -169,6 +183,7 @@ def main(depth=1):
 
         # Start crawling
         artist_list = list(soundCrawler.artists)
+        count = 0
         for i in range(depth):
             print("Depth: %s" % i)
             print("->Artists: %s" % artist_list)
@@ -176,18 +191,22 @@ def main(depth=1):
             new_artist_list = []
             for name in artist_list:
                 new_artists = soundCrawler.crawl_artist(name)
+                count += 1
                 new_artist_list += new_artists
 
             try:
                 artist_list = new_artist_list
             except:
                 artist_list = []
+            if count % 50:
+                print("----------------\nArtists dumped to artists_large.p.\n-------------------------")
+                soundCrawler.dump_artists("artists_large.p")
 
         # Check
         soundCrawler.print_artists()
 
         # Dump data for use later
-        soundCrawler.dump_artists("artist_small.p")
+        soundCrawler.dump_artists("artists_large.p")
 
 if __name__ == '__main__':
-    main(depth=1)
+    main(depth=3)

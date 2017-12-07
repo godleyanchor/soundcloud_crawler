@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 class SoundCloudNetwork():
     def __init__(self):
         self.artists = {}
-        self.network = nx.Graph()
+        self.network = nx.DiGraph()
         self.attr_names = ['num_tracks', 'num_followers', 'artist_city', 'latitude', 'longitude']
         # 0=num_tracks, 1=num_followers, 2=artist_city, 3=latitude, 4=longitude
         self.attrs = [{}, {}, {}, {}, {}]
