@@ -1,5 +1,6 @@
 import pickle
 import random
+import numpy as np
 import networkx as nx
 from itertools import count
 from collections import Counter
@@ -32,28 +33,33 @@ class SoundCloudNetwork():
         clustering_coefs = nx.clustering(self.network)
         print("clustering_coefs: %s\t" % clustering_coefs)
 
-    def link_prediction(self, graph_on):
-        iterations = 20
+    def link_prediction(self, load_file=True, graph_on=True):
         # Define arrays for axes
         probs = np.linspace(0,1,num=200).tolist()
-        sc_accs = []
+        if load_file:
+            # Store data to save on computation time
+            with open("soundcloud_link_pred_accs.p", "rb") as f:
+                sc_accs = pickle.load(f)
+        else:
+            iterations = 20
+            sc_accs = []
+            # Use a for loop to compute the accuracy of GbA heuristic for different probabilites
+            for prob in probs:
+                sh_acc = 0
+                # Use another loop to average the fraction of correct guesses
+                for i in range(iterations):
+                    # Reload the graphs to delete all of the node attributes
+                    self.gen_network(read_attr=False)
 
-        # Use a for loop to compute the accuracy of GbA heuristic for different probabilites
-        for prob in probs:
-            sh_acc = 0
-            # Use another loop to average the fraction of correct guesses
-            for i in range(iterations):
-                # Reload the graphs to delete all of the node attributes
-                gen_network(read_attr=False)
+                    # Open the attribute files and set the node attributes for each of the graphs
+                    attr_range = self.read_attr(percentage_observed=prob)
+                    print(len(self.attrs[0]))
 
-                # Open the attribute files and set the node attributes for each of the graphs
-                attr_range = read_attr(percentage_observed=prob)
+                    # Predict what the remaining unlabeled nodes should have for a label
+                    sh_acc += self.predict_labels(attr_range=attr_range)
 
-                # Predict what the remaining unlabeled nodes should have for a label
-                sh_acc += predict_labels(attr_range=attr_range)
-
-            print(round(prob*200))
-            sc_accs.append(sh_acc / iterations)
+                print(round(prob*200))
+                sc_accs.append(sh_acc / iterations)
 
         # Store data to save on computation time
         with open("soundcloud_link_pred_accs.p", "wb") as f:
@@ -61,7 +67,7 @@ class SoundCloudNetwork():
 
         if graph_on:
             # Plot the graphs with the collected data
-            plt.scatter(probs, nor_accs, label='Accuracy')
+            plt.scatter(probs, sc_accs, label='Accuracy')
             plt.xlabel("Percent of Nodes Observed")
             plt.ylabel("GbA Heuristic Accuracy")
             plt.title('GbA Heuristic Accuracy vs Percent of Nodes Observed for the SoundCloud Network')
@@ -72,7 +78,7 @@ class SoundCloudNetwork():
     def predict_labels(self, attr_range):
         acc = 0
         total_unlabeled_nodes = 0
-        current_attr = nx.get_node_attributes(self.network, self.attrs[-1])
+        current_attr = nx.get_node_attributes(self.network, self.attr_names[0])
 
         # Cycle through each of the nodes in the graph
         for node in self.network.nodes():
@@ -134,11 +140,87 @@ class SoundCloudNetwork():
             nx.set_node_attributes(self.network, attr_name, attr)
 
         # Find the unique range of classes
-        cn = Counter(self.correct_attr[-1].values())
+        cn = Counter(self.correct_attrs[-1].values())
         attr_range = sorted(k for k in cn.keys())
 
         return attr_range
 
+    def infect(self, p):
+
+        # Set all nodes to "Susceptible"
+        nx.set_node_attributes(self.network, 'epidemia', "S")
+
+        # Select node at random to begin infection
+        seed = random.randint(0, self.network.number_of_nodes()-1)
+        self.network.node[seed]['epidemia'] = "I"
+        infected = []
+        infected.append(seed)
+
+        # For every node that gets infected
+        t = 0
+        total_infected = 1
+        while(1):
+
+            new_infected_list = []
+            new_infected_count = 0
+            for i in infected:
+
+                # Try all neighbors
+                for edge in self.network.neighbors(i):
+
+                    # If edge is susceptible
+                    if self.network.node[edge]['epidemia'] == "S":
+
+                        # Try and infect it
+                        if random.random() < p:
+                            self.network.node[edge]['epidemia'] = "I"
+                            new_infected_list.append(edge)
+                            new_infected_count += 1
+                            total_infected += 1
+
+            print("New Infections: %s", new_infected_list)
+            infected = new_infected_list
+            t += 1
+
+            if new_infected_count <= 0:
+                break
+
+        print("p = %s\t| t = %d\t| total infected = %d" % (p, t, total_infected) )
+
+        return t, total_infected
+
+    def frange(self, start, stop, step):
+        i = start
+        while i < stop:
+            yield i
+        i += step
+
+    def SI(self):
+        p_list = []
+        t_list = []
+        infected_list = []
+        for p in self.frange(0, 1, 0.1):
+            t, num_infected = self.infect(p)
+
+            p_list.append(p)
+            t_list.append(t)
+            infected_list.append(float(num_infected) / self.network.number_of_nodes())
+
+        plt.title("Infected Length vs Probability of Infection")
+        plt.plot(p_list, t_list)
+        plt.xlabel("Probability of Infection")
+        plt.ylabel("Length of Infection (time steps)")
+        plt.savefig("soundcould_infection_length.png")
+        plt.clear()
+
+        plt.title("Infected Percentage vs Probability of Infection")
+        plt.plot(p_list, infected_list)
+        plt.xlabel("Probability of Infection")
+        plt.ylabel("Percent Infected")
+        plt.savefig("soundcould_infection_percent.png")
+        plt.clear()
+
+        #plt.show()
     def print_network(self):
         # Create a color array for plotting
         node_groups = set(nx.get_node_attributes(self.network,'num_tracks').values())
@@ -155,7 +237,6 @@ class SoundCloudNetwork():
         for artist in self.artists.keys():
             self.artist_id_dict[artist] = self.artists[artist]['id']
             self.artist_id_dict[self.artists[artist]['id']] = artist
-        print(self.artist_id_dict)
 
     def dump_artists(self, fname="artists.p"):
         pickle.dump(self.artists, open(fname, "wb"))
@@ -200,9 +281,11 @@ def main():
     sc.load_artists("artist_small.p")
     #sc.gen_edge_list()
     #sc.gen_attr()
-    sc.gen_network()
+    #sc.gen_network()
     #sc.print_network()
-    sc.triangle_scores()
-    sc.clustering_coef()
+    #sc.triangle_scores()
+    #sc.clustering_coef()
+    #sc.SI()
+    sc.link_prediction(False, True)
 if __name__ == '__main__':
     main()
