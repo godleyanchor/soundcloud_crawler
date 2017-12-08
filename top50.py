@@ -52,7 +52,7 @@ class Crawl():
         driver = webdriver.Chrome('C:/Users/jbuxofplenty/Desktop/chromedriver_win32/chromedriver.exe')
         driver.get(url)
         #driver.find_element_by_link_text("All").click()
-        for i in range(1, 200):
+        for i in range(1, 100):
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
             time.sleep(0.01)
         html_source = driver.page_source
@@ -87,6 +87,7 @@ class Crawl():
                     self.artists[name][key].append(name_follower)
 
         print("New Artists: %s" % new_artists)
+        print("Length New Artists: %d" % len(new_artists))
         return new_artists
 
     def crawl_artist(self, name, depth=3):
@@ -122,7 +123,7 @@ class Crawl():
         matches = re.findall('"city":"([^"]+)', content)
         for match in matches:
             if (match is not None):
-                if len(match) > 0 and match != 'Boulder' :
+                if len(match) > 0 and match != 'Boulder':
                     artist_city = match
                     geolocator = Nominatim()
                     try:
@@ -193,14 +194,14 @@ def main(depth=3):
                 new_artists = soundCrawler.crawl_artist(name)
                 count += 1
                 new_artist_list += new_artists
+                if count % 50:
+                    print("----------------\nArtists dumped to artists_large.p.\n-------------------------")
+                    soundCrawler.dump_artists("artists_large.p")
 
             try:
                 artist_list = new_artist_list
             except:
                 artist_list = []
-            if count % 50:
-                print("----------------\nArtists dumped to artists_large.p.\n-------------------------")
-                soundCrawler.dump_artists("artists_large.p")
 
         # Check
         soundCrawler.print_artists()

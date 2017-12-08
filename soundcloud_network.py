@@ -10,11 +10,27 @@ class SoundCloudNetwork():
         self.attr_names = ['num_tracks', 'num_followers', 'artist_city', 'latitude', 'longitude']
         # 0=num_tracks, 1=num_followers, 2=artist_city, 3=latitude, 4=longitude
         self.attrs = [{}, {}, {}, {}, {}]
+        self.artist_id_dict = {}
 
     def gen_network(self, edge_list="soundcloud_edge_list.txt", attr="soundcloud_attr.txt"):
         self.network = nx.read_edgelist(edge_list)
         self.read_attr(attr)
 
+    def triangle_scores(self):
+        triangles = nx.triangles(self.network)
+        num_triangles = 0
+        for value in triangles.values():
+            num_triangles += value
+        print("num_triangles: %s\t" % num_triangles)
+        print("triangles: %s\t" % triangles)
+
+    def clustering_coef(self):
+        clustering_coefs = nx.clustering(self.network)
+        print("clustering_coefs: %s\t" % clustering_coefs)
+
+    def link_prediction(self):
+
+        
     def read_attr(self, attr_fname):
         # Open the file and append the attributes to a dict
         with open(attr_fname, 'r') as attr_file:
@@ -44,6 +60,10 @@ class SoundCloudNetwork():
 
     def load_artists(self, fname="artists.p"):
         self.artists = pickle.load(open(fname, "rb"))
+        for artist in self.artists.keys():
+            self.artist_id_dict[artist] = self.artists[artist]['id']
+            self.artist_id_dict[self.artists[artist]['id']] = artist
+        print(self.artist_id_dict)
 
     def dump_artists(self, fname="artists.p"):
         pickle.dump(self.artists, open(fname, "wb"))
@@ -86,9 +106,11 @@ class SoundCloudNetwork():
 def main():
     sc = SoundCloudNetwork()
     sc.load_artists("artist_small.p")
-    sc.gen_edge_list()
-    sc.gen_attr()
+    #sc.gen_edge_list()
+    #sc.gen_attr()
     sc.gen_network()
-    sc.print_network()
+    #sc.print_network()
+    sc.triangle_scores()
+    sc.clustering_coef()
 if __name__ == '__main__':
     main()
