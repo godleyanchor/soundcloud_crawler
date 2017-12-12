@@ -11,7 +11,6 @@ class Crawl():
     def __init__(self, url):
         self.url = url
         self.header = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.62 Safari/537.36'}
-
         self.artists = {}
         self.id = 0
 
@@ -22,6 +21,13 @@ class Crawl():
 
     def dump_artists(self, fname="artists.p"):
         pickle.dump(self.artists, open(fname, "wb"))
+
+    def load_new_artists(self, fname="new_artists.p"):
+        new_artist_list = pickle.load(open(fname, "rb"))
+        return new_artist_list
+
+    def dump_new_artists(self, new_artist_list, fname="new_artists.p"):
+        pickle.dump(new_artist_list, open(fname, "wb"))
 
     def crawl_top_artists(self, url):
         response = requests.get(url, headers=self.header)
@@ -90,8 +96,8 @@ class Crawl():
         print("Length New Artists: %d" % len(new_artists))
         return new_artists
 
-    def crawl_artist(self, name, depth=3):
-        print(name)
+    def crawl_artist(self, name, depth=1):
+        # print(name)
         if type(name) is list:
             return []
         url = self.artists[name]["href"]
@@ -114,9 +120,13 @@ class Crawl():
                 num_tracks = match[0]
                 num_followers = match[1]
 
-                self.artists[name]["num_tracks"] = num_tracks
-                self.artists[name]["num_followers"] = num_followers
-                self.id += 1
+                num_tracks.replace(" ", "")
+                num_followers.replace(" ", "")
+
+                self.artists[name]["num_tracks"] = int(num_tracks)
+                self.artists[name]["num_followers"] = int(num_followers)
+                if self.artists[name]['id'] != self.id:
+                    self.id += 1
 
                 #print("tracks: %s\t| followers: %s" % (num_tracks, num_followers))
         # Parse in the location
@@ -134,12 +144,12 @@ class Crawl():
                         latitude = location.latitude
                         longitude = location.longitude
                     else:
-                        latitude = ''
-                        longitude = ''
+                        latitude = 0.0
+                        longitude = 0.0
                 else:
                     artist_city = ''
-                    latitude = ''
-                    longitude = ''
+                    latitude = 0.0
+                    longitude = 0.0
                 self.artists[name]["city"] = artist_city
                 self.artists[name]["latitude"] = latitude
                 self.artists[name]["longitude"] = longitude
@@ -166,24 +176,33 @@ class Crawl():
             var = self.artists[artist][key]
             return var
         except:
-            self.artists[artist][key] = ''
-            return ''
+            if key == "num_tracks" or key == "num_followers" or key == "num_following":
+                self.artists[artist][key] = 0
+                return 0
+            else:
+                self.artists[artist][key] = ''
+                return ''
 
 def main(depth=3):
         soundCrawler = Crawl("https://soundcloud.com")
 
         # Load old data
         #soundCrawler.load_artists()
-
+        load = False
         id = 0
         url_top = str(soundCrawler.url)+"/charts/top"
 
         # Initialize artists
-        #print("Gathering top artists...")
-        soundCrawler.crawl_top_artists(url_top)
+        if load:
+            soundCrawler.load_artists("artists_large.p")
+        else:
+            soundCrawler.crawl_top_artists(url_top)
 
         # Start crawling
-        artist_list = list(soundCrawler.artists)
+        if load:
+            artist_list = soundCrawler.load_new_artists("new_artists_large.p")
+        else:
+            artist_list = list(soundCrawler.artists)
         count = 0
         for i in range(depth):
             print("Depth: %s" % i)
@@ -194,10 +213,12 @@ def main(depth=3):
                 new_artists = soundCrawler.crawl_artist(name)
                 count += 1
                 new_artist_list += new_artists
-                if count % 50:
-                    print("----------------\nArtists dumped to artists_large.p.\n-------------------------")
-                    soundCrawler.dump_artists("artists_large.p")
-
+                print("-------------------------\nArtists dumped to artists_large.p.\n-------------------------")
+                soundCrawler.dump_artists("artists_large.p")
+                soundCrawler.dump_new_artists(new_artist_list, "new_artists_large.p")
+            print("-------------------------\nNew Depth\n-------------------------")
+            soundCrawler.dump_artists("artists_large.p")
+            soundCrawler.dump_new_artists(new_artist_list, "new_artists_large.p")
             try:
                 artist_list = new_artist_list
             except:
