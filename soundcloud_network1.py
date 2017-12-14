@@ -536,17 +536,17 @@ class SoundCloudNetwork():
 
 def main():
     sc = SoundCloudNetwork()
-    sc.load_artists("pickled_files/artist_small.p")
-    #sc.clean_artist_lr()
+    sc.load_artists("pickled_files/artists_large_connected.p")
+    sc.clean_artist_lr()
     sc.gen_edge_list(filename="soundcloud_edge_list1.txt")
     sc.gen_attr(filename="soundcloud_attr1.txt")
-    #sc.gen_network()
-    #sc.print_network()
+    sc.gen_network()
+    sc.print_network()
     #sc.triangle_scores()
     #sc.clustering_coef()
     #sc.degree_scores()
     #sc.SI()
-    sc.link_prediction(False, True)
+    #sc.link_prediction(False, True)
     #sc.print_network()
 if __name__ == '__main__':
     main()
