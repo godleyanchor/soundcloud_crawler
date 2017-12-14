@@ -496,10 +496,11 @@ class SoundCloudNetwork():
         for artist in self.artists.keys():
             num_tracks = self.try_key(artist, 'num_tracks')
             num_followers = self.try_key(artist, 'num_followers')
+            num_following = self.try_key(artist, 'num_following')
             artist_city = self.try_key(artist, 'city')
             latitude = self.try_key(artist, 'latitude')
             longitude = self.try_key(artist, 'longitude')
-            f.write((str(self.artists[artist]['id']) + '\t ' + str(self.artists[artist]['num_tracks']) + '\t ' + str(self.artists[artist]['num_followers']) + '\t ' + str(self.artists[artist]['city']) + '\t ' + str(self.artists[artist]['latitude']) + '\t ' + str(self.artists[artist]['longitude']) + '\n'))
+            f.write((str(self.artists[artist]['id']) + '\t ' + str(self.artists[artist]['num_tracks']) + '\t ' + str(self.artists[artist]['num_followers']) + '\t ' + str(self.artists[artist]['num_following']) + '\t ' + str(self.artists[artist]['city']) + '\t ' + str(self.artists[artist]['latitude']) + '\t ' + str(self.artists[artist]['longitude']) + '\n'))
             #print("name: %s\t num_tracks: %s\t num_followers: %s\t artist_city: %s" % (artist, self.artists[artist]['num_tracks'], self.artists[artist]['num_followers'], self.artists[artist]['city']))
         f.close()
 

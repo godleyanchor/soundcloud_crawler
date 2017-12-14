@@ -11,6 +11,7 @@
 \usepackage{nicefrac}       % compact symbols for 1/2, etc.
 \usepackage{microtype}      % microtypography
 \usepackage{authblk}
+\usepackage{graphicx}
 
 
 \title{The Effects of Different Sampling Techniques on the SoundCloud Network}
@@ -24,6 +25,8 @@
 }
 
 \begin{document}
+	
+\graphicspath{ {c:/users/jbuxofplenty/Github/soundcloud_crawler/final_report/} }
 
 \maketitle
 
@@ -98,6 +101,13 @@ After obtaining all of the data from SoundCloud and storing it into a dictionary
 After gathering the data to populate our network and loading it into NetworkX in order to conceptualize it, we realized very quickly that we were going to have to refine our method for sampling the data.  It was readily apparent that the graph generated was not very correlated to the structure of the full network.  Because most of the project was spent refining the sampling techniques, we decided to shift our focus from link prediction and rising artist analysis to analyzing the effect of different sampling techniques on the structure of the network generated.  In order to do so, we chose on using a consistent set of algorithms to test on the graph and consistent set of metrics to characterize the graph.  For algorithms, we chose the Guilt by Association heuristic and Link Prediction based on degree product, common neighbor, and shortest path heuristics.  For the metrics, we chose to use clustering coefficients, the total number of triangles, and degrees.  Each of these algorithms and metrics are discussed in more detail in their respected sections.
 
 \subsection{Network Topologies}
+The first network topology that we made was generated from our initial sampling design decision to snowball outwards from the "Top 50" songs chart.  We initially grabbed each of the artists on this page and then grabbed a subset of their followers and the users the artists were following.  We only grabbed a subset (initally unbeknown to us) because we ran into a large roadblock where SoundCloud had implemented an "infinite scrolling" feature on the "following" and "followers" pages attached to a profile page.  This feature loaded only twenty different artists initially when you made a request for the page until the user scrolled down to the bottom of the page, in which case twenty more artists would be loaded.  This process would be repeated until all of the followers or following were displayed.  After realizing this, we needed to implement a solution where we utilized a package called Selenium. This package implements a chrome driver to allow programmatic control over the chrome web application.  We then used javascript package called JQuery in order to send a request to the SoundCloud server to send us the next twenty users in the followers and following web pages.  We repeated this JQuery request a total of 10 times, stalling the script for a tenth of second in between to give time for the server to process the request and to account for latency.  This still only gave us a maximum of around 200 followers and 200 following.  We would've preferred to keep this script running until all of the users were loaded but we didn't due to time constraints.  Below is a visual representation of our first network generated. 
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[scale=0.255]{take_1_visualization}
+	\caption{Visualization of our first network topology.  Note that this network is scaled down to the first 500 nodes that were originally added.  The network consisted of around 21,000 nodes and 30,000 edges when we finished scraping and began to perform our algorithms and metrics on it.}
+\end{figure}
 
 
 \section*{References}
