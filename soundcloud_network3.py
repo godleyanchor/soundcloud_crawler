@@ -14,10 +14,10 @@ class SoundCloudNetwork():
     def __init__(self):
         self.artists = {}
         self.network = nx.Graph()
-        self.attr_names = ['num_tracks', 'num_followers', 'artist_city', 'latitude', 'longitude']
+        self.attr_names = ['num_tracks', 'num_followers', 'num_following', 'artist_city', 'latitude', 'longitude']
         # 0=num_tracks, 1=num_followers, 2=artist_city, 3=latitude, 4=longitude
-        self.attrs = [{}, {}, {}, {}, {}]
-        self.correct_attrs = [{}, {}, {}, {}, {}]
+        self.attrs = [{}, {}, {}, {}, {}, {}]
+        self.correct_attrs = [{}, {}, {}, {}, {}, {}]
         self.artist_id_dict = {}
 
     # Generate a network based on an edgelist and load attributes or not based on read_attr var passed
@@ -103,22 +103,22 @@ class SoundCloudNetwork():
                     # Predict what the remaining unlabeled nodes should have for a label
                     sh_acc += self.predict_labels(attr_range=attr_range)
 
-                    # Create a new empty graph for link link_prediction
-                    self.network = nx.Graph()
-
-                    # Read in the percentage of edges based on frac into each Network
-                    self.read_edges(prob)
-
-                    # Predict what the remaining edges should be based on the three heuristics
-                    temp[0], temp[1], temp[2] = self.predict_edges()
-                    for j in range(len(lr_acc)):
-                        lr_acc[j] += temp[j]
+                    # # Create a new empty graph for link link_prediction
+                    # self.network = nx.Graph()
+                    #
+                    # # Read in the percentage of edges based on frac into each Network
+                    # self.read_edges(prob)
+                    #
+                    # # Predict what the remaining edges should be based on the three heuristics
+                    # temp[0], temp[1], temp[2] = self.predict_edges()
+                    # for j in range(len(lr_acc)):
+                    #     lr_acc[j] += temp[j]
 
                 print(round(prob*num_probs))
                 sc_accs.append(sh_acc / iterations)
-                for i in range(len(lr_accs)):
-                    lr_accs[i].append(lr_acc[i]/iterations)
-                    lr_acc[i] = 0
+                # for i in range(len(lr_accs)):
+                #     lr_accs[i].append(lr_acc[i]/iterations)
+                #     lr_acc[i] = 0
 
         # Store data to save on computation time
         with open("soundcloud_gba_heuristic_accs.p", "wb") as f:
@@ -257,7 +257,7 @@ class SoundCloudNetwork():
                 # for i in nx.all_neighbors(self.network, node):
                 #      print(i)
                 # Compute the accuracy of the assigned label
-                acc += self.compute_accuracy(neighbor_attr, current_attr, node, attr_range)
+                acc += self.compute_accuracy1(neighbor_attr, current_attr, node, attr_range)
 
                 total_unlabeled_nodes += 1
 
@@ -304,11 +304,11 @@ class SoundCloudNetwork():
             non_zero_count = 0
             print(neighbor_attr)
             for attr in neighbor_attr:
-                if attr == 0:
+                if attr == '0':
                     zero_count += 1
                 else:
                     non_zero_count += 1
-            if zero_count > non_zero_count:
+            if zero_count >= non_zero_count:
                 most_frequent = 0
             else:
                 most_frequent = 1
@@ -458,13 +458,18 @@ class SoundCloudNetwork():
     # Load the self.artists dict into memory from a file defined by fname
     def load_artists(self, fname="artists.p"):
         self.artists = pickle.load(open(fname, "rb"))
+        self.gen_id_dict()
+
+    # Create a id_dict in order to index in with either the name of the artist or the id and return the other
+    def gen_id_dict(self):
+        self.artist_id_dict = {}
         i = 0
         for artist in self.artists.keys():
             self.artists[artist]['id'] = i
             i += 1
             self.artist_id_dict[artist] = self.artists[artist]['id']
             self.artist_id_dict[self.artists[artist]['id']] = artist
-        print(len(self.artists.keys()))
+        print('Num artists: ', len(self.artists.keys()))
 
     # Dump the current self.artists dict
     def dump_artists(self, fname="artists.p"):
@@ -527,29 +532,22 @@ class SoundCloudNetwork():
                 new_artists[artist]['id'] = i
                 i += 1
         self.artists = new_artists
-        i = 0
-        self.artist_id_dict = {}
-        for artist in self.artists.keys():
-            self.artists[artist]['id'] = i
-            i += 1
-            self.artist_id_dict[artist] = self.artists[artist]['id']
-            self.artist_id_dict[self.artists[artist]['id']] = artist
-        print(len(self.artists.keys()))
+        self.gen_id_dict()
 
 def main():
     sc = SoundCloudNetwork()
-    #sc.load_artists("pickled_files/artists_large_connected.p")
-    sc.load_artists("artists_genres.p")
+    sc.load_artists("pickled_files/artists_genres_old.p")
+    #sc.load_artists("artists_genres.p")
     #sc.clean_artist_lr()
     sc.gen_edge_list(filename="soundcloud_edge_list3.txt")
     sc.gen_attr(filename="soundcloud_attr3.txt")
-    sc.gen_network(edge_list="soundcloud_edge_list3.txt", attr="soundcloud_attr3.txt")
+    #sc.gen_network(edge_list="soundcloud_edge_list3.txt", attr="soundcloud_attr3.txt")
     #sc.print_network()
     #sc.triangle_scores()
-    sc.clustering_coef()
+    #sc.clustering_coef()
     #sc.degree_scores()
     #sc.SI()
-    #sc.link_prediction(False, True)
+    sc.link_prediction(False, True)
     #sc.print_network()
 if __name__ == '__main__':
     main()

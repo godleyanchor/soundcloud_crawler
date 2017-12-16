@@ -103,22 +103,22 @@ class SoundCloudNetwork():
                     # Predict what the remaining unlabeled nodes should have for a label
                     sh_acc += self.predict_labels(attr_range=attr_range)
 
-                    # Create a new empty graph for link link_prediction
-                    self.network = nx.Graph()
-
-                    # Read in the percentage of edges based on frac into each Network
-                    self.read_edges(prob)
-
-                    # Predict what the remaining edges should be based on the three heuristics
-                    temp[0], temp[1], temp[2] = self.predict_edges()
-                    for j in range(len(lr_acc)):
-                        lr_acc[j] += temp[j]
+                    # # Create a new empty graph for link link_prediction
+                    # self.network = nx.Graph()
+                    #
+                    # # Read in the percentage of edges based on frac into each Network
+                    # self.read_edges(prob)
+                    #
+                    # # Predict what the remaining edges should be based on the three heuristics
+                    # temp[0], temp[1], temp[2] = self.predict_edges()
+                    # for j in range(len(lr_acc)):
+                    #     lr_acc[j] += temp[j]
 
                 print(round(prob*num_probs))
                 sc_accs.append(sh_acc / iterations)
-                for i in range(len(lr_accs)):
-                    lr_accs[i].append(lr_acc[i]/iterations)
-                    lr_acc[i] = 0
+                # for i in range(len(lr_accs)):
+                #     lr_accs[i].append(lr_acc[i]/iterations)
+                #     lr_acc[i] = 0
 
         # Store data to save on computation time
         with open("soundcloud_gba_heuristic_accs.p", "wb") as f:
@@ -257,7 +257,7 @@ class SoundCloudNetwork():
                 # for i in nx.all_neighbors(self.network, node):
                 #      print(i)
                 # Compute the accuracy of the assigned label
-                acc += self.compute_accuracy(neighbor_attr, current_attr, node, attr_range)
+                acc += self.compute_accuracy1(neighbor_attr, current_attr, node, attr_range)
 
                 total_unlabeled_nodes += 1
 
@@ -304,11 +304,11 @@ class SoundCloudNetwork():
             non_zero_count = 0
             print(neighbor_attr)
             for attr in neighbor_attr:
-                if attr == 0:
+                if attr == '0':
                     zero_count += 1
                 else:
                     non_zero_count += 1
-            if zero_count > non_zero_count:
+            if zero_count >= non_zero_count:
                 most_frequent = 0
             else:
                 most_frequent = 1
@@ -361,83 +361,6 @@ class SoundCloudNetwork():
         attr_range = sorted(k for k in cn.keys() if k != ' ')
 
         return attr_range
-
-    def infect(self, p):
-
-        # Set all nodes to "Susceptible"
-        nx.set_node_attributes(self.network, 'epidemia', "S")
-
-        # Select node at random to begin infection
-        seed = random.randint(0, self.network.number_of_nodes()-1)
-        self.network.node[seed]['epidemia'] = "I"
-        infected = []
-        infected.append(seed)
-
-        # For every node that gets infected
-        t = 0
-        total_infected = 1
-        while(1):
-
-            new_infected_list = []
-            new_infected_count = 0
-            for i in infected:
-
-                # Try all neighbors
-                for edge in self.network.neighbors(i):
-
-                    # If edge is susceptible
-                    if self.network.node[edge]['epidemia'] == "S":
-
-                        # Try and infect it
-                        if random.random() < p:
-                            self.network.node[edge]['epidemia'] = "I"
-                            new_infected_list.append(edge)
-                            new_infected_count += 1
-                            total_infected += 1
-
-            print("New Infections: %s", new_infected_list)
-            infected = new_infected_list
-            t += 1
-
-            if new_infected_count <= 0:
-                break
-
-        print("p = %s\t| t = %d\t| total infected = %d" % (p, t, total_infected) )
-
-        return t, total_infected
-
-    def frange(self, start, stop, step):
-        i = start
-        while i < stop:
-            yield i
-        i += step
-
-    def SI(self):
-        p_list = []
-        t_list = []
-        infected_list = []
-        for p in self.frange(0, 1, 0.1):
-            t, num_infected = self.infect(p)
-
-            p_list.append(p)
-            t_list.append(t)
-            infected_list.append(float(num_infected) / self.network.number_of_nodes())
-
-        plt.title("Infected Length vs Probability of Infection")
-        plt.plot(p_list, t_list)
-        plt.xlabel("Probability of Infection")
-        plt.ylabel("Length of Infection (time steps)")
-        plt.savefig("soundcould_infection_length.png")
-        plt.clear()
-
-        plt.title("Infected Percentage vs Probability of Infection")
-        plt.plot(p_list, infected_list)
-        plt.xlabel("Probability of Infection")
-        plt.ylabel("Percent Infected")
-        plt.savefig("soundcould_infection_percent.png")
-        plt.clear()
-
-        #plt.show()
 
     # Print the structure of the network (Use only on networks with nodes<500)
     def print_network(self):
@@ -538,7 +461,7 @@ def main():
     sc = SoundCloudNetwork()
     sc.load_artists("pickled_files/artists_large_connected.p")
     #sc.load_artists("artists_genres.p")
-    sc.clean_artist_lr()
+    #sc.clean_artist_lr()
     sc.gen_edge_list(filename="soundcloud_edge_list2.txt")
     sc.gen_attr(filename="soundcloud_attr2.txt")
     #sc.gen_network()

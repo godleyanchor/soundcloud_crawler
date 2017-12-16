@@ -132,11 +132,63 @@ For our third network, we wanted to encompass a more representative sample of al
 
 \begin{figure}[h]
 	\centering
-	\includegraphics[scale=0.29]{take_3_visualization}
+	\includegraphics[scale=0.43]{take_3_visualization}
 	\caption{Visualization of our third network topology.  Note that this network is scaled down to the first 500 nodes that were originally added.  The network consisted of around 6,000 nodes and 6,000 edges when we finished scraping and began to perform our algorithms and metrics on it.  The colors and numbers on the nodes are representing the number of tracks each of the users had.}
 \end{figure}
 
-In this network, we were surprised to see the number of components in the graph greatly increase from the previous network.  We believed that changing the sampling technique to only gather the users that were followed by a particular user would keep the network very connected.  Upon further investigation, we believe that the number of components is due to the different genres of music an artist is apart of.  It is reasonable to believe that there are different communities of users within that can be discerned from different genres as people tend to enjoy one or a few different genres rather than all of the genres in a given spectrum.  It is also apparent that most of the nodes in our graph represent users and not artists as the color of the majority of nodes is cyan blue (num\_tracks=0).
+In this network, we were surprised to see the number of components in the graph greatly increase from the previous network.  We believed that changing the sampling technique to only gather the users that were followed by a particular user would keep the network very connected.  Upon further investigation, we now understand that the number of components is due to the different genres of music an artist is apart of.  It is reasonable to believe that there are different communities of users within that can be discerned from different genres as people tend to enjoy one or a few different genres rather than all of the genres in a given spectrum.  It is also apparent that most of the nodes in our graph represent users and not artists as the color of the majority of nodes is cyan blue (num\_tracks=0).  We thought we were on the right track to getting a graph structurally similar to the full network so we decided to use our graph generated using this sampling technique and build upon it further.
+
+Our final topology that we created was just an extension of the third topology in the sense that we took the users that were present in the network and added attributes on the nodes themselves and edges between them.  We also expanded the user base using the same sampling technique in our third topology.  We spent the most time generating this final network and also added more iterations to the scrolling in the "following" and "followers" pages, to get a network more structurally simlilar to the full network.  Below is a visualization of our final topology.
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[scale=0.29]{take_4_visualization}
+	\caption{Visualization of our fourth network topology.  Note that this network is scaled down using a function that removed any of the users that did not upload any tracks to the profile page and then randomly sampled further down to 350 nodes so as to be comparable to the 2nd topology configuration.  The network consisted of around 30,000 nodes and 50,000 edges when we finished scraping and began to perform our algorithms and metrics on it.  The colors and numbers on the nodes are representing the number of tracks each of the users had.}
+\end{figure}
+
+\subsection{Algorithms}
+
+\subsubsection{GbA Heuristic}
+The GbA (Guilt by Association) heuristic is an approach to gauge the associativity of a graph given a certain attribute.  That is to say, how likely nodes are to connect to other nodes with the same attribute.  We wanted to use this heuristic to see how associative artists were to non-artists on the SoundCloud domain. In order to do this, we used code from one of our previous homeworks in Network Analysis where we had to gauge whether the \textit{var} gene sequences (the nodes in the network) in the human malaria parasite exhibited homophily with respect to the cys/PolV attribute attached to the nodes.  We wanted to use this code in order to gauge whether the graphs we generated were assortative based on the number of tracks the users uploaded to their profile pages.  More specifically, we wanted to see if the graph was assortative based on artist/non-artists. Below is a graph that demonstrates the code applied to our fourth topology.
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[scale=0.29]{take_4_gba}
+	\caption{Graph that demonstrates the GbA heuristic applied to the num\_tracks attribute of nodes vs the fraction of nodes observed with the correct attribute.  This depiction is of the heuristic performed on the fourth topology and each point was averaged over 10 different iterations.  Note that applying this heuristic to all of our topologies produced very similar results.}
+\end{figure}
+
+We were having a very difficult time trying to understand why the graph turned out the way it did.  When analyzing the GbA heuristic algorithm, we realized that we applied it wrongly to our application.  In order for the algorithm to predict a label, it first looks at all of the other labels of its neighbors.  It then finds the majority label and predicts it to be the actual label.  The reason this heuristic was wrongly applied was because the number of tracks uploaded by a user is very specific to the user and it is not logical to think that if your neighbors have produced a certain number of tracks, you should produce the same amount of tracks.  Therefore, we decided to implement a variation of the algorithm where we lumped the num\_tracks attribute into a new binary attribute where 1 represented that you've uploaded 1 or more tracks and 0 otherwise.  Below is a depiction of this algorithm applied to our fourth topology.
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[scale=0.29]{take_4_gba_2}
+	\caption{Graph that demonstrates the GbA heuristic applied to the new binary num\_tracks attribute of nodes vs the fraction of nodes observed with the correct attribute.  This depiction is of the heuristic performed on the fourth topology and each point was averaged over 10 different iterations.  Note that applying this heuristic to all of our topologies produced very similar results.}
+\end{figure}
+
+The results depicted above leads us to believe that the graphs that we generated are very homopholic with respect to artists/non-artists.  Intuitively, we expected the opposite to be true when applying this heuristic to the full network.  This is because it is our belief that the majority of connections would be from non-artists following artists.  The results could either represent a heavy bias that is introduced into the network based on our sampling techniques or a fundamental error in our algorithm that we performed.  In order to test this hypothesis, we wrote a function that checked to see what types of edges existed in our graph.  The results of the function are depicted in the table below.
+
+\begin{table}[h!]
+	\centering
+	\begin{tabular}{||c c||} 
+		\hline
+		Type of Edge & Number of Edges \\ [0.5ex] 
+		\hline\hline
+		Users to Users & 9161 \\
+		\hline
+		Users to Artists & 36302 \\ 
+		\hline
+		Artists to Artists & 3190 \\
+		\hline
+		Total Edges & 48653 \\
+		\hline
+	\end{tabular}
+	\caption{Types of edges in the fourth topology}
+	\label{Table:3}
+\end{table}
+
+The table above gives a clear indication that there is a serious error in the implementation of the GbA Heuristic on the SoundCloud network.  This could've also been the case as to why we generated mostly identical graphs for each one of the topologies.  Unfortunately, we did not have enough time before the submission of this paper to rectify the issue.
+
+\section{Future Work}
 
 \section*{References}
 \small
