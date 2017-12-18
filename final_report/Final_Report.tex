@@ -101,14 +101,32 @@ Note that we initially chose these fields with the intent to perform link predic
 
 \subsection{Network}
 
-After obtaining all of the data from SoundCloud and storing it into a dictionary, we needed to decide how to load it into a structure where we could perform our analysis on it. We opted to use the package NetworkX as we were very familiar with it and all of its functionality.  We made a big design decision to keep the network's edges undirected versus directed because otherwise it would limit us to be able to use certain functions in the NetworkX package as well as make it more difficult to generate a densley connected graph given our time constraints.  We knew that this network seemed to abstract better to a directed network and therefore we coded in the option to generate one in the future.
+After obtaining all of the data from SoundCloud and storing it into a dictionary, we needed to decide how to load it into a structure where we could perform our analysis on it. We opted to use the package NetworkX as we were very familiar with it and all of its functionality.  We made the significant design decision to keep the network's edges undirected versus directed because otherwise it would limit us in being able to use certain functions in the NetworkX package as well as making it more difficult to generate a densley connected graph given our time constraints.  We knew that this network seemed to generalize better to a directed network and therefore we coded in the option to generate one in the future.  
 
 \section{Analysis}
 
 After gathering the data to populate our network and loading it into NetworkX in order to conceptualize it, we realized very quickly that we were going to have to refine our method for sampling the data.  It was readily apparent that the graph generated was not very correlated to the structure of the full network.  Because most of the project was spent refining the sampling techniques, we decided to shift our focus from link prediction and rising artist analysis to analyzing the effect of different sampling techniques on the structure of the network generated.  In order to do so, we chose on using a consistent set of algorithms to test on the graph and consistent set of metrics to characterize the graph.  For algorithms, we chose the Guilt by Association heuristic and Link Prediction based on degree product, common neighbor, and shortest path heuristics.  For the metrics, we chose to use clustering coefficients, the total number of triangles, and degrees.  Each of these algorithms and metrics are discussed in more detail in their respected sections.
 
 \subsection{Network Topologies}
-The first network topology that we made was generated from our initial sampling design decision to snowball outwards from the "Top 50" songs chart.  We initially grabbed each of the artists on this page and then grabbed a subset of their followers and the users the artists were following.  We only grabbed a subset (initally unbeknown to us) because we ran into a large roadblock where SoundCloud had implemented an "infinite scrolling" feature on the "following" and "followers" pages attached to a profile page.  This feature loaded only twenty different artists initially when you made a request for the page until the user scrolled down to the bottom of the page, in which case twenty more artists would be loaded.  This process would be repeated until all of the followers or following were displayed.  After realizing this, we needed to implement a solution where we utilized a package called Selenium. This package implements a chrome driver to allow programmatic control over the chrome web application.  We then used javascript package called JQuery in order to send a request to the SoundCloud server to send us the next twenty users in the followers and following web pages.  We repeated this JQuery request a total of 10 times, stalling the script for a tenth of second in between to give time for the server to process the request and to account for latency.  This still only gave us a maximum of around 200 followers and 200 following.  We would've preferred to keep this script running until all of the users were loaded but we didn't due to time constraints.  Below in Figure 2 is a visual representation of our first network generated. 
+The first network topology that we made was generated from our initial sampling design decision to
+snowball outwards from the "Top 50" songs chart.  We initially grabbed each of the artists on this
+page and then grabbed a subset of their followers and the users the artists were following.  We only
+grabbed a subset (initally unbeknown to us) because we ran into a large roadblock where SoundCloud
+had implemented an "infinite scrolling" feature on the "following" and "followers" pages attached to
+a profile page.  This feature loaded only twenty different artists initially when you made a request
+for the page until the user scrolled down to the bottom of the page, in which case twenty more
+artists would be loaded.  This process would be repeated until all of the followers or following
+were displayed.  After realizing this, we needed to implement a solution where we utilized a package
+called Selenium. This package implements a chrome driver to allow programmatic control over the
+chrome web application.  We then used javascript package called JQuery in order to send a request to
+the SoundCloud server to send us the next twenty users in the followers and following web pages.  We
+repeated this JQuery request a total of 10 times, stalling the script for a tenth of second in
+between to give time for the server to process the request and to account for latency.  This still
+only gave us a maximum of around 200 followers and 200 following.  We would've preferred to keep
+this script running until all of the users were loaded but we didn't due to time constraints and the
+sheer number of followers available. Since we were seeding with the largest artists on SoundCloud,
+there could easily have been over million followers for each of them. This was just too large of a
+network for our hardware to both scrape and process in the time alotted for the project.  Below in Figure 2 is a visual representation of our first network generated. 
 
 \begin{figure}[h]
 	\centering
@@ -118,7 +136,11 @@ The first network topology that we made was generated from our initial sampling 
 
 The visualization of the network is exactly what we expected to see because of the sampling scheme that we used.  Each of the nodes in the visualization are colored based on the number of tracks attribute.  Thus, the cyan nodes are users that had the number of tracks attribute equal to zero.  You can see that there are many cyan nodes that fan out connections to a different colored node in the center.  These different colored nodes indicate the first 40-50 artists that we grabbed from the "Top 50" song charts seed webpage.  The cyan users indicate the followers and following of the initial artists.  There are also some cyan nodes in the middle that have multiple connections to a variety of different colored nodes.  We expected to see this because most of the "Top 50" songs were in the rap genre and therefore, we believed it would be more probable for the different artists in the "Top 50" to share different followers and following.  We did not believe that this small, subset-network was structurally similar to the full SoundCloud network.  This belief was the motivation to creating our second network topology.
 
-The second network generated was the result of a change in our sampling technique.  We wanted the network to have more connections between nodes because we believed it would be more similar to the full network.  In order to do this, we thought we could adjust our sampling technique to adaptive sampling.  We used our initial pickled users file after our script captured the nodes and edges from "depth=1" (refer to Figure 1 for a better understanding).  We then branched out from those users to only the users they were following.  We believed this would give us a network that would contain many more artists rather than users because most artists have a larger following/followers ratio.  We were hoping this would lead us to a more connected network as well because we thought the initial followers of the "Top 50" artists would make connections to many more common artists since most of the "Top 50" artists were in the same genre.  Below is a depiction of the network generated from our second sampling technique.
+The second network generated was the result of a change in our sampling technique.  We wanted the
+network to have more connections between nodes because we believed it would be more similar to the
+full network.  In order to do this, we thought we could adjust our sampling technique to adaptive
+sampling.  We used our initial pickled users file after our script captured the nodes and edges from
+"depth=1" (refer to Figure 1 for a better understanding).  We then only branched out from those users to the users they were following.  We believed this would give us a network that would contain many more artists rather than users because most artists have a larger following/followers ratio.  We were hoping this would lead us to a more connected network as well because we thought the initial followers of the "Top 50" artists would make connections to many more common artists since most of the "Top 50" artists were in the same genre.  Below is a depiction of the network generated from our second sampling technique.
 
 \begin{figure}[h]
 	\centering
@@ -147,6 +169,32 @@ Our final topology that we created was just an extension of the third topology i
 \end{figure}
 
 \subsection{Algorithms}
+
+\subsubsection{Graph Metrics}
+The table below contains all of the basic graph metrics that we gathered from each of our first three topologies. The number of nodes, number of edges, number of triangles, max clustering coefficient, overall clustering coefficient, max degree, and mean degree were all measured. The nodes and edges are provided to give insight to the size of the graph, while the triangles and clustering coefficients speak to the community structure of the network. We can see that each graph had a rather low clustering coefficient despite each having nodes with a max value of one. The third topology was the worst performing here, as we could have predicted given the shape of that topology. The second was surprisingly lower than the first, however, as we expected the second topology to be much more connected than the first. It did have a higher mean degree than the first, but all were still fairly low values. 
+
+\begin{table}[h!]
+	\centering
+	\begin{tabular}{||c c||} 
+		\hline
+		& Take 1 & Take 2 & Take 3\\ [0.5ex] 
+		\hline\hline
+		N & 21258 & 39734 & 5598 \\
+		\hline
+		Number of Triangles & 11715 & 11229 & 411 \\ 
+		\hline
+		Max Clustering Coeff & 1 & 1 & 1 \\
+		\hline
+		Clustering Coeff & 0.023 & 0.012 & 0.0095 \\
+		\hline
+		Max Degree & 183 & 184 & 157 \\
+		\hline
+		Mean Degree & 2.75 & 3.02 & 2.15 \\
+		\hline
+	\end{tabular}
+	\caption{Graph metrics taken from the first 3 topologies. }
+	\label{Table:2}
+\end{table}
 
 \subsubsection{GbA Heuristic}
 The GbA (Guilt by Association) heuristic is an approach to gauge the associativity of a graph given a certain attribute.  That is to say, how likely nodes are to connect to other nodes with the same attribute.  We wanted to use this heuristic to see how associative artists were to non-artists on the SoundCloud domain. In order to do this, we used code from one of our previous homeworks in Network Analysis where we had to gauge whether the \textit{var} gene sequences (the nodes in the network) in the human malaria parasite exhibited homophily with respect to the cys/PolV attribute attached to the nodes.  We wanted to use this code in order to gauge whether the graphs we generated were assortative based on the number of tracks the users uploaded to their profile pages.  More specifically, we wanted to see if the graph was assortative based on artist/non-artists. Below is a graph that demonstrates the code applied to our fourth topology.
@@ -188,7 +236,25 @@ The results depicted above leads us to believe that the graphs that we generated
 
 The table above gives a clear indication that there is a serious error in the implementation of the GbA Heuristic on the SoundCloud network.  This could've also been the case as to why we generated mostly identical graphs for each one of the topologies.  Unfortunately, we did not have enough time before the submission of this paper to rectify the issue.
 
+\subsubsection{Link Prediction}
+Link prediction is the task of resolving missing edges or adding new edges based on the structure of the networks nodes or attributes. There are many different methods and applications for link prediction, but here we focus on applying and comparing three algorithms: (1) Degree Product AUC, (2) Common Neighbors AUC, and (3) Shortest Path AUC. Each of these algorithms can be represented by a score if you let \Gamma(i) denote the set of neighbors of i in the network, and let \sigma(i, j) be the length of a geodesic path between i and j. The scores for the Degree Product AUC are represented by the product of the two nodes' degrees, just as the name would suggest. The Common Neighbors AUC score is found by taking the intersection of the neighbors of nodes i and j, divided by the union of the neighbors of nodes i and j. To find a Shortest Path AUC score, we simply calculate 1/\sigma(i, j). 
+
+Each of the three AUC metrics were performed on the four topologies we generated. Despite the significantly different design decisions that built each network, the plots generated from each of these are surprisingly similar. Below are the plots generated from the second and fourth topologies, as these were our most promising networks that were generated. Comparing those two figures, the fact that the Shortest Path AUC was the most successful metric indicates that these topologies had more in common than we originally thought. It could also indicate that this may be the correlating performance to the full SoundCloud network. The common neighbors metric was always the worst performing, which is also interesting. Looking back to how this metric is scored, one might expect that the lack of performance here ties into a lack of correlation between what nodes are nearby and that neighbors are not good indicators of links. Intuitively this is a little surprising, as one might have expected musicians to cluster with friends and connect among like friends. This result seems to indicate the opposite and that a network of musicians is more complex. To try and explain why the Shortest Paths AUC is most accurate, perhaps it would be correct to assume that artists connect with other artists when convenient. Another explanation might be that artists are trying to network and build in the most efficient way possible, which means optimizing who they connect with based on path length rather than community.  
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[scale=0.29]{take_2_lr}
+	\caption{Representation of link prediction over the second network topology. The Shortest Path AUC overtakes the other two to be the best performing after 50\% of the edges are observed.}
+\end{figure}
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[scale=0.29]{take_4_lr}
+	\caption{Representation of link prediction over the fourth network topology. Overall very similar to the graph generated by the second topology. The Shortest Path AUC is still the best, but this time it is from approximately after 30\% of edges are observed, rather than 50\%.}
+\end{figure}
+
 \section{Future Work}
+This was an insightful project on sampling and constructing a large dataset that is a representative subset of a complete network. By the end, we felt that we were just beginning to see promising results and that our sampling methods were maturing. There is a lot of work left to do on this project regarding the link prediction and artist trending prediction. We could easily spend dozens of more hours generating better networks alone, but we feel that with the lessons we've learned that we could sample SoundCloud just once more and have a reliable network to base our assumptions on. In a final revision of our topology, it would be best if we incorporated a larger sample of non-artist users. These users provide the glue of interconnectivity to our model and would allow for a true directed network. Using this model we would reapply link prediction algorithms in four different contexts: (1) connecting artists to users for publicity, (2) connecting artists to artists for collaborations, (3) connecting users to artists for finding new music, and (4) connecting users to users as either a social network or a way to find people to see a show with. As far as the rising artist prediction pertains, we have multiple methods and metrics we would like to try, but we would love to extract a stronger community and track changes over time in a temporal version of the model. A temporal network would provid us with the ability to make many other predictions and labelings as well, such as identifying one-hit-wonders, all-time greats, and even our desired next-top-artist. Much of the ground work is in place for this future work, and we look forward to applying what we've learned to move forward and attain our desired results. 
 
 \section*{References}
 \small
